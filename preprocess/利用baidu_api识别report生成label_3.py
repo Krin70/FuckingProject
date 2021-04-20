@@ -60,18 +60,6 @@ def baiduOCR(picfile):
     return blank_output, fileName, diagnose
 
 
-# # 再次处理未处理好的图片
-# def convertImg_again(picfile, outdir):
-#     img = Image.open(picfile)
-#     # img=img.crop((49,188,783,1030))
-#     width, height = img.size
-#     while (width * height > 4000000):  # 该数值压缩后的图片大约 两百多k
-#         width = width // 2
-#         height = height // 2
-#     new_img = img.resize((width, height), Image.BILINEAR)
-#     new_img.save(path.join(outdir, os.path.basename(picfile)))
-
-
 if __name__ == "__main__":
     ROOT_DIR = os.getcwd()
     outDirectory = './Label/ReportResult'
