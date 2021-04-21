@@ -2,14 +2,17 @@ import inspect
 import os
 import shutil
 import traceback
-from collections import Counter
-from random import random
 import pydicom
 import cv2 as cv
 import numpy as np
+from collections import Counter
+from random import random
+from PIL import Image
+from aip import AipOcr
+from os import path
 
 
-def read_file(path):
+def read_file(fpath):
     """Takes a list of file from the path.
         path: String of image path 'path'.
 
@@ -18,7 +21,7 @@ def read_file(path):
     """
     filePathList = []  # 文件目录列表
     directoryList = []  # 文件夹目录列表
-    for root, sub_folders, files in os.walk(path):
+    for root, sub_folders, files in os.walk(fpath):
         for name in files:
             filePathList.append(os.path.join(root, name))
         for name in sub_folders:
@@ -26,15 +29,15 @@ def read_file(path):
     return filePathList
 
 
-def create_dir(path, createDirectoryList):
+def create_dir(fpath, createDirectoryList):
     """create directories in the path.
         path: String of image path 'path'.
         createDirectoryList: List of String of directory ['directory1','directory2'....].
     """
     try:
         for directory in createDirectoryList:
-            if not os.path.exists(os.path.join(path, directory)):
-                os.makedirs(os.path.join(path, directory))
+            if not os.path.exists(os.path.join(fpath, directory)):
+                os.makedirs(os.path.join(fpath, directory))
                 print("%s 文件夹创建成功" % directory)
             else:
                 print("%s 文件夹已经存在" % directory)
@@ -64,7 +67,7 @@ def move_file(src_path, dst_path, file):
 
 
 # 清洗images中非DCM文件
-def IsDCM(path):
+def IsDCM(fpath):
     """Takes a list of DCM image path from the path.
         path: String of image path 'path'.
 
@@ -72,7 +75,7 @@ def IsDCM(path):
         returnDCMList: [imgPath1, imgPath2, imgPath3...].
     """
     returnDCMList = []
-    for IsDcm in path:
+    for IsDcm in fpath:
         Suffix = IsDcm.split(".")[-1]
         if Suffix == 'DCM':
             returnDCMList.append(IsDcm)
@@ -80,7 +83,7 @@ def IsDCM(path):
 
 
 # 选出MRI图像
-def IsMRI(path):
+def IsMRI(fpath):
     """Takes a list of MRI DCM image path from the path.
         path: String of DCM image path 'path'.
 
@@ -88,9 +91,8 @@ def IsMRI(path):
         returnMRIList: [imgPath1, imgPath2, imgPath3...].
     """
     returnMRIList = []  # DCM文件里在MRI文件夹下面的文件
-    for Is_MRI in path:
-        rex = Is_MRI.split("\\")
-        for temp in rex:
+    for Is_MRI in fpath:
+        for temp in Is_MRI.split("\\"):
             if temp == 'MRI':
                 returnMRIList.append(Is_MRI)
     return returnMRIList
@@ -290,8 +292,7 @@ def get_pixel_data_with_lut_applied(dcm):
 
 
 def OutputReport(FileName, JPGpath, DirAndFile):
-    FileName = FileName.split(".")
-    newFileName = FileName[0] + ".jpg"
+    newFileName = FileName.split(".")[0] + ".jpg"
     dcm = pydicom.read_file(DirAndFile.strip())
     temp = get_pixel_data_with_lut_applied(dcm)
     os.chdir(JPGpath)
@@ -311,10 +312,11 @@ def renameFile(oldNameList, label):
         Returns 1 String list:
         List: [imgPath1, imgPath2, imgPath3...] imgPath : String.
     """
+    from os import path
     newNameList = []
     n = 0
     fileDirectory = oldNameList[0]
-    newName = fileDirectory.split("\\")[-1]
+    newName = path.basename(fileDirectory)
     path = fileDirectory.replace(newName, '')
     for i in oldNameList:
         # 设置旧文件名（就是路径+文件名）
@@ -326,3 +328,50 @@ def renameFile(oldNameList, label):
         n += 1
         newNameList.append(newName)
     return newNameList
+
+
+# 裁剪图片与压缩图片
+def cropImg(PicFile, outputDirectory, need_Crop=True):
+    """调整图片大小，对于过大的图片进行压缩
+    PicFile:    图片路径
+    outputDirectory：    图片输出路径
+    """
+    img = Image.open(PicFile)
+    if need_Crop:
+        img = img.crop((36, 804, 514, 899))
+    width, height = img.size
+    while width * height > 4000000:  # 该数值压缩后的图片大约 两百多k
+        width = width // 2
+        height = height // 2
+    new_img = img.resize((width, height), Image.BILINEAR)
+    new_img.save(path.join(outputDirectory, os.path.basename(PicFile)))
+
+
+# 扫描识别图片
+def baiduOCR(picfile):
+    """利用百度api识别文本，并保存提取的文字
+    picfile:    图片文件名
+    """
+    from os import path
+    fileName = path.basename(picfile)
+    APP_ID = '20280389'  # 刚才获取的 ID，下同
+    API_KEY = 'V1MgPatLTbbaXCPX7QWN6t8e'
+    SECRET_KEY = 'mLBv4t0B1cgw5Ep8djK6uXEOi7qsHcuL'
+    client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
+
+    i = open(picfile, 'rb')
+    img = i.read()
+    print("正在识别图片：\t" + fileName)
+    message = client.basicGeneral(img)  # 通用文字识别，每天 50 000 次免费
+    # message = client.basicAccurate(img)   # 通用文字高精度识别，每天 800 次免费
+    print("识别成功！")
+    i.close();
+    diagnose = ''
+    blank_output = []
+    if message.get('words_result_num') != 0:
+        for text in message.get('words_result'):
+            diagnose = text.get('words')
+    else:
+        blank_output.append(fileName)
+        diagnose = ''
+    return blank_output, fileName, diagnose

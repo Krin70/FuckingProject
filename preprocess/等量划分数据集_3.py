@@ -6,8 +6,6 @@ Created on Wed Dec  9 14:07:23 2020
 """
 
 import os
-
-
 from preprocess import utils
 
 
@@ -16,9 +14,6 @@ if __name__ == "__main__":
     createdir = ["Train", "Valid", "Test"]
     utils.create_dir(ROOT_DIR, createdir)
     Path_file = utils.read_file(ROOT_DIR)
-
-    # 得到一个label为0的list
-    # [name for name in Path_file if name.split("\\")[-2]==str(0)]
 
     # 0 = 骨质疏松 = osteoporosis = OP =
     # 1 = 骨量减少 = Osteopenia = OST = low bone mass low bone mass

@@ -1,6 +1,5 @@
 import numpy as np
-
-import utils
+from preprocess import utils
 
 
 def compareFeatureAndLabeledPatientNum(MRI_image):

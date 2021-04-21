@@ -8,57 +8,9 @@ Created on Sat Nov  7 15:48:52 2020
 import glob
 from os import path
 import os
-from aip import AipOcr
-from PIL import Image
 import time
 import numpy as np
 from preprocess import utils
-
-
-# 裁剪图片与压缩图片
-def convertImg(PicFile, outputDirectory, need_Crop=True):
-    """调整图片大小，对于过大的图片进行压缩
-    PicFile:    图片路径
-    outputDirectory：    图片输出路径
-    """
-    img = Image.open(PicFile)
-    if need_Crop:
-        img = img.crop((36, 804, 514, 899))
-    width, height = img.size
-    while width * height > 4000000:  # 该数值压缩后的图片大约 两百多k
-        width = width // 2
-        height = height // 2
-    new_img = img.resize((width, height), Image.BILINEAR)
-    new_img.save(path.join(outputDirectory, os.path.basename(PicFile)))
-
-
-# 扫描识别图片
-def baiduOCR(picfile):
-    """利用百度api识别文本，并保存提取的文字
-    picfile:    图片文件名
-    """
-    fileName = path.basename(picfile)
-    APP_ID = '20280389'  # 刚才获取的 ID，下同
-    API_KEY = 'V1MgPatLTbbaXCPX7QWN6t8e'
-    SECRET_KEY = 'mLBv4t0B1cgw5Ep8djK6uXEOi7qsHcuL'
-    client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
-
-    i = open(picfile, 'rb')
-    img = i.read()
-    print("正在识别图片：\t" + fileName)
-    message = client.basicGeneral(img)  # 通用文字识别，每天 50 000 次免费
-    # message = client.basicAccurate(img)   # 通用文字高精度识别，每天 800 次免费
-    print("识别成功！")
-    i.close();
-    diagnose = ''
-    if message.get('words_result_num') != 0:
-        for text in message.get('words_result'):
-            diagnose = text.get('words')
-    else:
-        blank_output.append(fileName)
-        diagnose = ''
-    return blank_output, fileName, diagnose
-
 
 if __name__ == "__main__":
     ROOT_DIR = os.getcwd()
@@ -67,10 +19,9 @@ if __name__ == "__main__":
         os.mkdir(outDirectory)
     print("压缩过大的图片...")
     # 首先对过大的图片进行压缩，以提高识别速度，将压缩的图片保存与临时文件夹中
-    for JPG_File in glob.glob(r".\\Label\\Report\\" + "*.jpg"):
-        convertImg(JPG_File, outDirectory)
+    for JPG_File in glob.glob(".\\Label\\Report\\*.jpg"):
+        utils.cropImg(JPG_File, outDirectory)
     print("图片识别...")
-    blank_output = []
     fileNameList = []
     LabelsList = []
     num = 0  # 计数器
@@ -78,7 +29,7 @@ if __name__ == "__main__":
         print(num)
         num += 1
         time.sleep(1)
-        blank_output, filename, label1 = baiduOCR(JPG_File)
+        blank_output, filename, label1 = utils.baiduOCR(JPG_File)
         fileNameList.append(filename)
         LabelsList.append(label1)
         os.remove(JPG_File)
@@ -87,8 +38,8 @@ if __name__ == "__main__":
     for file in blank_output:
         utils.move_file("./Label/Report/", "./Label/ReportResult/temp", file)
 
-    for JPG_File in glob.glob(r"./Label/ReportResult/temp/" + "*.jpg"):
-        convertImg(JPG_File, "./Label/ReportResult/temp/tmp", False)
+    for JPG_File in glob.glob(".\\Label\\ReportResult\\temp\\" + "*.jpg"):
+        utils.cropImg(JPG_File, ".\\Label\\ReportResult\\temp\\tmp", False)
 
     fileNameList1 = []
     LabelsList1 = []
@@ -98,7 +49,7 @@ if __name__ == "__main__":
         APP_ID = '20280389'  # 刚才获取的 ID，下同
         API_KEY = 'V1MgPatLTbbaXCPX7QWN6t8e'
         SECRET_KEY = 'mLBv4t0B1cgw5Ep8djK6uXEOi7qsHcuL'
-        client = AipOcr(APP_ID, API_KEY, SECRET_KEY)
+        client = utils.AipOcr(APP_ID, API_KEY, SECRET_KEY)
 
         i = open(name, 'rb')
         img = i.read()
@@ -128,13 +79,6 @@ if __name__ == "__main__":
                 or "在同龄人范围内" in value or "临床" in value:
             Useful_Report_Filename.append(key)
             Useful_Report_Result.append(value)
-    #     else:
-    #         Need_Processed_Filename.append(key)
-    #         print(key)
-    #         print(value)
-    # Need_Processed_Filename = Need_Processed_Filename + blank_output
-    # for file in Need_Processed_Filename:
-    #     utils.move_file("./Label/ReportResult/", "./Label/ReportResult/temp", file)
 
     # 数值化标签
     for key, value in enumerate(Useful_Report_Result):
