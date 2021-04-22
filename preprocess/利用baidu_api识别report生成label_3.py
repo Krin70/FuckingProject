@@ -14,37 +14,37 @@ from preprocess import utils
 
 if __name__ == "__main__":
     ROOT_DIR = os.getcwd()
-    outDirectory = './Label/ReportResult'
+    outDirectory = '.\\preprocess\\Label\\ReportResult'
     if not path.exists(outDirectory):
         os.mkdir(outDirectory)
     print("压缩过大的图片...")
     # 首先对过大的图片进行压缩，以提高识别速度，将压缩的图片保存与临时文件夹中
-    for JPG_File in glob.glob(".\\Label\\Report\\*.jpg"):
+    for JPG_File in glob.glob(".\\preprocess\\Label\\Report\\*.jpg"):
         utils.cropImg(JPG_File, outDirectory)
     print("图片识别...")
     fileNameList = []
     LabelsList = []
     num = 0  # 计数器
-    for JPG_File in glob.glob("./Label/ReportResult/*.jpg"):
+    for JPG_File in glob.glob(".\\preprocess\\Label\\ReportResult\\*.jpg"):
         print(num)
         num += 1
         time.sleep(1)
-        blank_output, filename, label1 = utils.baiduOCR(JPG_File)
+        _, filename, label1 = utils.baiduOCR(JPG_File)
         fileNameList.append(filename)
         LabelsList.append(label1)
         os.remove(JPG_File)
     print('图片文本提取结束！')
 
-    for file in blank_output:
-        utils.move_file("./Label/Report/", "./Label/ReportResult/temp", file)
+    # for file in blank_output:
+    #     utils.move_file(".\\preprocess\\Label\\Report\\", ".\\preprocess\\Label\\ReportResult\\temp", file)
 
-    for JPG_File in glob.glob(".\\Label\\ReportResult\\temp\\" + "*.jpg"):
-        utils.cropImg(JPG_File, ".\\Label\\ReportResult\\temp\\tmp", False)
+    # for JPG_File in glob.glob(".\\preprocess\\Label\\ReportResult\\temp\\" + "*.jpg"):
+    #     utils.cropImg(JPG_File, ".\\preprocess\\Label\\ReportResult\\temp\\tmp", False)
 
     fileNameList1 = []
     LabelsList1 = []
     num = 0
-    for name in glob.glob("./Label/ReportResult/temp/tmp/" + "*.jpg"):
+    for name in glob.glob(".\\preprocess\\Label\\ReportResult\\temp\\tmp\\" + "*.jpg"):
         filename = path.basename(name)
         APP_ID = '20280389'  # 刚才获取的 ID，下同
         API_KEY = 'V1MgPatLTbbaXCPX7QWN6t8e'
@@ -106,6 +106,6 @@ if __name__ == "__main__":
             operateDictionary.pop(key)
 
     # Save
-    np.save('./Label/ReportLabel', operateDictionary)
+    np.save('.\\preprocess\\Label\\ReportLabel', operateDictionary)
     # Load
-    read_dictionary = np.load('./Label/ReportLabel.npy', allow_pickle=True).item()
+    read_dictionary = np.load('.\\preprocess\\Label\\ReportLabel.npy', allow_pickle=True).item()
